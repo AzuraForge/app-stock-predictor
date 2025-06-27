@@ -1,0 +1,20 @@
+# ========== DOSYA: app-stock-predictor/pyproject.toml ==========
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "azuraforge-app-stock-predictor"
+version = "0.1.0"
+description = "A stock prediction pipeline application for the AzuraForge platform."
+requires-python = ">=3.8"
+dependencies = [
+    "azuraforge-learner @ git+https://github.com/AzuraForge/learner.git@main",
+    "yfinance",
+    # Bu uygulama özelinde başka kütüphaneler gerekirse buraya eklenecek.
+]
+
+# --- SİHİRLİ KISIM: PLATFORMA KENDİNİ TANITMA ---
+[project.entry-points."azuraforge.pipelines"]
+# "pipeline_adı" = "paket.modül:SınıfAdı"
+stock_predictor = "azuraforge_stockapp.pipeline:StockPredictionPipeline"
