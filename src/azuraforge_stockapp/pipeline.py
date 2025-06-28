@@ -6,6 +6,20 @@ from sklearn.preprocessing import MinMaxScaler
 
 from azuraforge_learner import Learner, Sequential, Linear, MSELoss, SGD, ReLU
 
+def get_default_config():
+    """Bu pipeline için varsayılan konfigürasyonu döndürür."""
+    return {
+      "pipeline_name": "stock_predictor",
+      "data_sourcing": {
+          "ticker": "MSFT", 
+          "start_date": "2022-01-01"
+      },
+      "training_params": {
+          "epochs": 10, 
+          "lr": 0.01
+      }
+    }
+
 class StockPredictionPipeline:
     def __init__(self, config: dict):
         self.config = config

@@ -15,6 +15,9 @@ dependencies = [
     "scikit-learn",
 ]
 
-# --- PLATFORM ENTEGRASYONU (GİRİŞ NOKTASI) ---
-[project.entry-points."azuraforge.pipelines"]
-stock_predictor = "azuraforge_stockapp.pipeline:StockPredictionPipeline"
+[project.entry-points]
+# Var olan giriş noktası
+"azuraforge.pipelines" = { stock_predictor = "azuraforge_stockapp.pipeline:StockPredictionPipeline" }
+
+# --- YENİ GİRİŞ NOKTASI GRUBU ---
+"azuraforge.configs" = { stock_predictor = "azuraforge_stockapp.pipeline:get_default_config" }
