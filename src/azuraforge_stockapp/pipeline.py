@@ -3,19 +3,18 @@ import logging
 import yfinance as yf
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-import os # Ortam değişkenlerini okumak için
+import os 
 
 from azuraforge_learner import Learner, Sequential, Linear, MSELoss, SGD, ReLU
 
 class StockPredictionPipeline:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, celery_task: Any = None): # <- YENİ PARAMETRE
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         logging.basicConfig(level="INFO", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.celery_task = celery_task # Celery Task objesini sakla
 
     def run(self):
-        # Config'den değerleri güvenli bir şekilde al, yoksa varsayılan kullan.
-        # Bu, KeyError'ları önler.
         data_sourcing_config = self.config.get("data_sourcing", {})
         training_params_config = self.config.get("training_params", {})
         
@@ -35,13 +34,12 @@ class StockPredictionPipeline:
             close_prices = data[['Close']].values.astype(np.float32)
         except Exception as e:
             self.logger.error(f"Data download failed for {ticker}: {e}")
-            raise # Hatayı yukarı fırlat
+            raise 
 
         # 2. Veri Hazırlama
         scaler = MinMaxScaler(feature_range=(-1, 1))
         scaled_prices = scaler.fit_transform(close_prices)
         
-        # Eğer veri çok kısaysa, eğitim yapmadan bitir
         if len(scaled_prices) < 2:
             self.logger.warning("Not enough data to create sequences for training.")
             return {"status": "completed", "ticker": ticker, "final_loss": float('inf'), "message": "Not enough data for training"}
@@ -53,8 +51,8 @@ class StockPredictionPipeline:
         criterion = MSELoss()
         optimizer = SGD(model.parameters(), lr=lr)
         
-        # Learner'a Task objesini ilet (ilerleme raporlamak için)
-        learner = Learner(model, criterion, optimizer, current_task=os.getenv("CELERY_TASK_ID", None))
+        # --- KRİTİK DÜZELTME: Learner'a Celery Task objesini iletiyoruz ---
+        learner = Learner(model, criterion, optimizer, current_task=self.celery_task)
 
         # 4. Eğitim
         self.logger.info(f"Starting training for {epochs} epochs...")
