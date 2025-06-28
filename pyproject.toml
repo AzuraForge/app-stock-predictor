@@ -11,10 +11,10 @@ requires-python = ">=3.8"
 dependencies = [
     "azuraforge-learner @ git+https://github.com/AzuraForge/learner.git@main",
     "yfinance",
-    # Bu uygulama özelinde başka kütüphaneler gerekirse buraya eklenecek.
+    "pandas",
+    "scikit-learn",
 ]
 
-# --- SİHİRLİ KISIM: PLATFORMA KENDİNİ TANITMA ---
+# --- PLATFORM ENTEGRASYONU (GİRİŞ NOKTASI) ---
 [project.entry-points."azuraforge.pipelines"]
-# "pipeline_adı" = "paket.modül:SınıfAdı"
 stock_predictor = "azuraforge_stockapp.pipeline:StockPredictionPipeline"

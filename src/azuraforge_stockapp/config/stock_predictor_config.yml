@@ -1,11 +1,10 @@
 # ========== DOSYA: src/azuraforge_stockapp/config/stock_predictor_config.yml ==========
 pipeline_name: "stock_predictor"
-pipeline_class_name: "StockPredictionPipeline" # Bu artık gerekmeyebilir ama kalsın
 
 data_sourcing:
-  ticker: "BIST:THYAO" # Yahoo Finance formatı
-  start_date: "2020-01-01"
+  ticker: "MSFT" # Microsoft
+  start_date: "2021-01-01"
 
 training_params:
-  epochs: 50
-  # ... diğer parametreler
+  epochs: 10 # Test için kısa tutalım
+  lr: 0.01
