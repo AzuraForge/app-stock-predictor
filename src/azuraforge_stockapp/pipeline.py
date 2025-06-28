@@ -4,15 +4,16 @@ import yfinance as yf
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import os 
+from typing import Any # <<<< KRİTİK DÜZELTME
 
 from azuraforge_learner import Learner, Sequential, Linear, MSELoss, SGD, ReLU
 
 class StockPredictionPipeline:
-    def __init__(self, config: dict, celery_task: Any = None): # <- YENİ PARAMETRE
+    def __init__(self, config: dict, celery_task: Any = None):
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         logging.basicConfig(level="INFO", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.celery_task = celery_task # Celery Task objesini sakla
+        self.celery_task = celery_task
 
     def run(self):
         data_sourcing_config = self.config.get("data_sourcing", {})
@@ -25,7 +26,6 @@ class StockPredictionPipeline:
 
         self.logger.info(f"--- Running Stock Prediction Pipeline for {ticker} ({epochs} epochs) ---")
         
-        # 1. Veri Yükleme
         try:
             data = yf.download(ticker, start=start_date, progress=False, actions=False, auto_adjust=True)
             if data.empty:
@@ -36,7 +36,6 @@ class StockPredictionPipeline:
             self.logger.error(f"Data download failed for {ticker}: {e}")
             raise 
 
-        # 2. Veri Hazırlama
         scaler = MinMaxScaler(feature_range=(-1, 1))
         scaled_prices = scaler.fit_transform(close_prices)
         
@@ -46,15 +45,12 @@ class StockPredictionPipeline:
 
         X, y = scaled_prices[:-1], scaled_prices[1:]
         
-        # 3. Model ve Learner'ı Oluşturma
         model = Sequential(Linear(1, 64), ReLU(), Linear(64, 1))
         criterion = MSELoss()
         optimizer = SGD(model.parameters(), lr=lr)
         
-        # --- KRİTİK DÜZELTME: Learner'a Celery Task objesini iletiyoruz ---
         learner = Learner(model, criterion, optimizer, current_task=self.celery_task)
 
-        # 4. Eğitim
         self.logger.info(f"Starting training for {epochs} epochs...")
         history = learner.fit(X, y, epochs=epochs)
         
