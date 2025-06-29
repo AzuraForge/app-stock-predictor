@@ -4,8 +4,25 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import os 
 from typing import Any # <<<< KRİTİK DÜZELTME
+import yaml # Yeni: Konfigürasyon dosyasını okumak için
 
 from azuraforge_learner import Learner, Sequential, Linear, MSELoss, SGD, ReLU
+
+# Yeni fonksiyon: Varsayılan konfigürasyonu döndürür
+def get_default_config():
+    """
+    Bu pipeline'ın varsayılan konfigürasyonunu bir Python sözlüğü olarak döndürür.
+    YAML dosyasından yükler.
+    """
+    config_path = os.path.join(os.path.dirname(__file__), "config", "stock_predictor_config.yml")
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        return config
+    except Exception as e:
+        logging.error(f"Error loading default config for stock_predictor: {e}")
+        return {"error": f"Could not load default config: {e}"}
+
 
 class StockPredictionPipeline:
     def __init__(self, config: dict, celery_task: Any = None):
@@ -18,6 +35,7 @@ class StockPredictionPipeline:
         data_sourcing_config = self.config.get("data_sourcing", {})
         training_params_config = self.config.get("training_params", {})
         
+        # ... (Geri kalan kod aynı kalacak) ...
         ticker = data_sourcing_config.get("ticker", "MSFT")
         start_date = data_sourcing_config.get("start_date", "2021-01-01")
         epochs = training_params_config.get("epochs", 10)
