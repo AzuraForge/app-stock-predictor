@@ -7,7 +7,6 @@ from typing import Any
 import yaml
 from importlib import resources
 
-# YENİ: LSTM ve Adam gibi yeni bileşenleri import ediyoruz
 from azuraforge_learner import Learner, Sequential, Linear, LSTM, MSELoss, SGD, Adam, ReLU
 
 def get_default_config():
@@ -43,12 +42,12 @@ class StockPredictionPipeline:
             self.logger.error("Could not load default config. Using only provided config.")
             self.config = config
         else:
-            def deep_merge(source, destination):
+            # İYİLEŞTİRME: Daha sağlam bir deep_merge fonksiyonu
+            def deep_merge(source: dict, destination: dict) -> dict:
                 for key, value in source.items():
-                    if isinstance(value, dict):
-                        node = destination.setdefault(key, {})
-                        deep_merge(value, node)
-                    else:
+                    if isinstance(value, dict) and key in destination and isinstance(destination.get(key), dict):
+                        destination[key] = deep_merge(value, destination[key])
+                    elif value is not None: # Sadece None olmayan değerleri yaz
                         destination[key] = value
                 return destination
             
@@ -56,20 +55,22 @@ class StockPredictionPipeline:
             self.config = deep_merge(config, merged_config)
 
     def run(self):
+        # Konfigürasyonları güvenli bir şekilde al
         data_sourcing_config = self.config.get("data_sourcing", {})
         training_params_config = self.config.get("training_params", {})
-        model_params_config = self.config.get("model_params", {}) # YENİ
+        model_params_config = self.config.get("model_params", {})
         
         ticker = data_sourcing_config.get("ticker", "MSFT")
-        start_date = data_sourcing_config.get("start_date", "2021-01-01")
+        start_date = data_sourcing_config.get("start_date", "2010-01-01")
         
-        epochs = int(training_params_config.get("epochs", 10))
-        lr = float(training_params_config.get("lr", 0.01))
-        optimizer_type = training_params_config.get("optimizer", "adam").lower() # YENİ
-        sequence_length = int(model_params_config.get("sequence_length", 60)) # YENİ
-        hidden_size = int(model_params_config.get("hidden_size", 50)) # YENİ
+        # UI'dan gelen değerlerin string olabileceğini varsayarak güvenli dönüşüm yap
+        epochs = int(training_params_config.get("epochs", 50)) 
+        lr = float(training_params_config.get("lr", 0.001)) 
+        optimizer_type = str(training_params_config.get("optimizer", "adam")).lower()
+        sequence_length = int(model_params_config.get("sequence_length", 60))
+        hidden_size = int(model_params_config.get("hidden_size", 50))
 
-        self.logger.info(f"--- Running LSTM Stock Prediction for {ticker} (epochs={epochs}, lr={lr}, opt={optimizer_type}) ---")
+        self.logger.info(f"--- Running LSTM Stock Prediction for {ticker} (start_date={start_date}, epochs={epochs}, lr={lr}, opt={optimizer_type}) ---")
         
         try:
             data = yf.download(ticker, start=start_date, progress=False, actions=False, auto_adjust=True)
@@ -86,15 +87,16 @@ class StockPredictionPipeline:
         
         if len(scaled_prices) <= sequence_length:
             self.logger.warning(f"Not enough data to create sequences. Need > {sequence_length}, have {len(scaled_prices)}")
-            return {"status": "completed", "message": "Not enough data for training"}
+            return {"status": "completed", "ticker": ticker, "final_loss": float('inf'), "message": "Not enough data for training"}
 
-        # YENİ: Veriyi LSTM için sekanslara ayır
         X, y = create_sequences(scaled_prices, sequence_length)
         
-        # Girdi boyutunu (num_features) veriden al
+        if X.size == 0 or y.size == 0:
+            self.logger.warning("Created sequences are empty. Aborting training.")
+            return {"status": "completed", "ticker": ticker, "final_loss": float('inf'), "message": "Sequence creation resulted in empty data."}
+
         input_size = X.shape[2] 
         
-        # YENİ: Modeli LSTM olarak tanımla
         model = Sequential(
             LSTM(input_size=input_size, hidden_size=hidden_size),
             Linear(hidden_size, 1)
@@ -102,7 +104,6 @@ class StockPredictionPipeline:
         
         criterion = MSELoss()
         
-        # YENİ: Optimizer'ı konfigürasyona göre seç
         if optimizer_type == "adam":
             optimizer = Adam(model.parameters(), lr=lr)
         else:
@@ -113,7 +114,12 @@ class StockPredictionPipeline:
         self.logger.info(f"Starting LSTM training for {epochs} epochs...")
         history = learner.fit(X, y, epochs=epochs)
         
-        final_loss = history['loss'][-1] if history['loss'] else float('inf')
+        final_loss = history['loss'][-1] if history.get('loss') else float('inf')
         self.logger.info(f"Training complete. Final loss: {final_loss:.6f}")
         
-        return {"status": "completed", "ticker": ticker, "final_loss": final_loss, "loss": history['loss']}
+        return {
+            "status": "completed", 
+            "ticker": ticker, 
+            "final_loss": final_loss, 
+            "loss": history.get('loss', [])
+        }

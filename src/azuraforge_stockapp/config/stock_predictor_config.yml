@@ -2,14 +2,13 @@ pipeline_name: "stock_predictor"
 
 data_sourcing:
   ticker: "MSFT" # Microsoft
-  start_date: "2021-01-01"
+  start_date: "2010-01-01" # <- DEĞİŞİKLİK: Yeterli veriyi garanti altına almak için tarihi çok daha geriye çektik.
 
-# YENİ: Modelin yapısını belirleyen parametreler
 model_params:
   sequence_length: 60 # LSTM'in ne kadar geriye bakacağı
   hidden_size: 50     # LSTM katmanındaki nöron sayısı
 
 training_params:
-  epochs: 10 
-  lr: 0.001 # Adam için daha düşük bir öğrenme oranı genellikle daha iyidir
-  optimizer: "adam" # 'adam' veya 'sgd' olabilir
+  epochs: 50 # <-- DEĞİŞİKLİK: Varsayılan epoch sayısını daha anlamlı bir eğitime izin verecek şekilde artırdık.
+  lr: 0.001 
+  optimizer: "adam"
