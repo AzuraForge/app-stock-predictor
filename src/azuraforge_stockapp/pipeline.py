@@ -10,6 +10,7 @@ from importlib import resources
 from azuraforge_learner import Learner, Sequential, Linear, LSTM, MSELoss, SGD, Adam, ReLU
 
 def get_default_config():
+    # ... (kod aynı)
     try:
         with resources.open_text("azuraforge_stockapp.config", "stock_predictor_config.yml") as f:
             config = yaml.safe_load(f)
@@ -19,6 +20,7 @@ def get_default_config():
         return {"error": f"Could not load default config: {e}"}
 
 def create_sequences(data, sequence_length):
+    # ... (kod aynı)
     xs, ys = [], []
     for i in range(len(data) - sequence_length):
         x = data[i:(i + sequence_length)]
@@ -28,11 +30,13 @@ def create_sequences(data, sequence_length):
     return np.array(xs), np.array(ys)
 
 class StockPredictionPipeline:
-    def __init__(self, config: dict, celery_task: Any = None):
-        self.celery_task = celery_task
+    def __init__(self, config: dict, task_id: str): # DÜZELTME: celery_task -> task_id
+        # DÜZELTME: Artık celery_task objesini değil, sadece id'sini tutuyoruz
+        self.task_id = task_id 
         self.logger = logging.getLogger(self.__class__.__name__)
         logging.basicConfig(level="INFO", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+        # ... (config birleştirme mantığı aynı) ...
         default_config = get_default_config()
         if "error" in default_config:
             self.logger.error("Could not load default config. Using only provided config.")
@@ -50,12 +54,12 @@ class StockPredictionPipeline:
             self.config = deep_merge(config, merged_config)
 
     def run(self):
+        # ... (run metodunun başı aynı) ...
         data_sourcing_config = self.config.get("data_sourcing", {})
         training_params_config = self.config.get("training_params", {})
         model_params_config = self.config.get("model_params", {})
         
         ticker = data_sourcing_config.get("ticker", "MSFT")
-        # DİKKAT: start_date artık kullanılmıyor, yerine period="max" kullanacağız.
         
         epochs = int(training_params_config.get("epochs", 50)) 
         lr = float(training_params_config.get("lr", 0.001)) 
@@ -66,8 +70,6 @@ class StockPredictionPipeline:
         self.logger.info(f"--- Running LSTM Stock Prediction for {ticker} (period=max, epochs={epochs}) ---")
         
         try:
-            # DÜZELTME: Veri çekme stratejisi değiştirildi.
-            # start_date yerine period="max" kullanarak en fazla veriyi çekmeyi garantiliyoruz.
             data = yf.download(ticker, period="max", progress=False, actions=False, auto_adjust=True)
             if data.empty:
                 raise ValueError(f"No data downloaded for ticker: {ticker} using period='max'")
@@ -77,6 +79,7 @@ class StockPredictionPipeline:
             self.logger.error(f"Data download failed for {ticker}: {e}")
             raise 
 
+        # ... (run metodunun ortası aynı) ...
         scaler = MinMaxScaler(feature_range=(-1, 1))
         scaled_prices = scaler.fit_transform(close_prices)
         
@@ -97,10 +100,12 @@ class StockPredictionPipeline:
         
         optimizer = Adam(model.parameters(), lr=lr) if optimizer_type == "adam" else SGD(model.parameters(), lr=lr)
         
-        learner = Learner(model, criterion, optimizer, current_task=self.celery_task)
+        # DÜZELTME: Learner'a artık task_id'yi iletiyoruz.
+        learner = Learner(model, criterion, optimizer, task_id=self.task_id)
 
         self.logger.info(f"Starting LSTM training for {epochs} epochs...")
-        history = learner.fit(X, y, epochs=epochs)
+        # DÜZELTME: Learner'a pipeline_name'i de iletiyoruz.
+        history = learner.fit(X, y, epochs=epochs, pipeline_name=self.config.get("pipeline_name", "stock_predictor"))
         
         final_loss = history['loss'][-1] if history.get('loss') else None
         self.logger.info(f"Training complete. Final loss: {final_loss}")
