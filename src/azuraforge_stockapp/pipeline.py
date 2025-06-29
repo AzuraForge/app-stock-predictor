@@ -1,16 +1,17 @@
+# app-stock-predictor/src/azuraforge_stockapp/pipeline.py
+
 import logging
 import yfinance as yf
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import os 
-from typing import Any
+from typing import Any, List, Optional
 import yaml
 from importlib import resources
 
-from azuraforge_learner import Learner, Sequential, Linear, LSTM, MSELoss, SGD, Adam, ReLU
+from azuraforge_learner import Learner, Sequential, Linear, LSTM, MSELoss, SGD, Adam, ReLU, Callback
 
 def get_default_config():
-    # ... (kod aynı)
     try:
         with resources.open_text("azuraforge_stockapp.config", "stock_predictor_config.yml") as f:
             config = yaml.safe_load(f)
@@ -20,7 +21,6 @@ def get_default_config():
         return {"error": f"Could not load default config: {e}"}
 
 def create_sequences(data, sequence_length):
-    # ... (kod aynı)
     xs, ys = [], []
     for i in range(len(data) - sequence_length):
         x = data[i:(i + sequence_length)]
@@ -30,13 +30,11 @@ def create_sequences(data, sequence_length):
     return np.array(xs), np.array(ys)
 
 class StockPredictionPipeline:
-    def __init__(self, config: dict, task_id: str): # DÜZELTME: celery_task -> task_id
-        # DÜZELTME: Artık celery_task objesini değil, sadece id'sini tutuyoruz
-        self.task_id = task_id 
+    # DÜZELTME: __init__ artık task_id veya celery_task almıyor.
+    def __init__(self, config: dict):
         self.logger = logging.getLogger(self.__class__.__name__)
         logging.basicConfig(level="INFO", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-        # ... (config birleştirme mantığı aynı) ...
         default_config = get_default_config()
         if "error" in default_config:
             self.logger.error("Could not load default config. Using only provided config.")
@@ -53,8 +51,8 @@ class StockPredictionPipeline:
             merged_config = default_config.copy()
             self.config = deep_merge(config, merged_config)
 
-    def run(self):
-        # ... (run metodunun başı aynı) ...
+    # DÜZELTME: run metodu artık opsiyonel bir callbacks listesi alıyor.
+    def run(self, callbacks: Optional[List[Callback]] = None):
         data_sourcing_config = self.config.get("data_sourcing", {})
         training_params_config = self.config.get("training_params", {})
         model_params_config = self.config.get("model_params", {})
@@ -79,7 +77,6 @@ class StockPredictionPipeline:
             self.logger.error(f"Data download failed for {ticker}: {e}")
             raise 
 
-        # ... (run metodunun ortası aynı) ...
         scaler = MinMaxScaler(feature_range=(-1, 1))
         scaled_prices = scaler.fit_transform(close_prices)
         
@@ -100,11 +97,10 @@ class StockPredictionPipeline:
         
         optimizer = Adam(model.parameters(), lr=lr) if optimizer_type == "adam" else SGD(model.parameters(), lr=lr)
         
-        # DÜZELTME: Learner'a artık task_id'yi iletiyoruz.
-        learner = Learner(model, criterion, optimizer, task_id=self.task_id)
+        # DÜZELTME: Learner'ı başlatırken dışarıdan gelen callback'leri de iletiyoruz.
+        learner = Learner(model, criterion, optimizer, callbacks=callbacks)
 
         self.logger.info(f"Starting LSTM training for {epochs} epochs...")
-        # DÜZELTME: Learner'a pipeline_name'i de iletiyoruz.
         history = learner.fit(X, y, epochs=epochs, pipeline_name=self.config.get("pipeline_name", "stock_predictor"))
         
         final_loss = history['loss'][-1] if history.get('loss') else None
