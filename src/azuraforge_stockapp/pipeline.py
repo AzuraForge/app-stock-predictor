@@ -4,34 +4,50 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import os 
 from typing import Any
-import yaml # YENİ: Konfigürasyon dosyasını okumak için
+import yaml
+from importlib import resources # YENİ: Paket içi kaynak okumak için en güvenilir yol
 
 from azuraforge_learner import Learner, Sequential, Linear, MSELoss, SGD, ReLU
 
 def get_default_config():
     """
     Bu pipeline'ın varsayılan konfigürasyonunu bir Python sözlüğü olarak döndürür.
-    YAML dosyasından yükler.
+    DÜZELTME: importlib.resources kullanarak dosya okuma hatasını giderir.
     """
-    config_path = os.path.join(os.path.dirname(__file__), "config", "stock_predictor_config.yml")
     try:
-        with open(config_path, 'r') as f:
+        # "azuraforge_stockapp.config" modülü içindeki dosyayı güvenli bir şekilde açar
+        with resources.open_text("azuraforge_stockapp.config", "stock_predictor_config.yml") as f:
             config = yaml.safe_load(f)
         return config
-    except Exception as e:
-        logging.error(f"Error loading default config for stock_predictor: {e}")
+    except (FileNotFoundError, ModuleNotFoundError, Exception) as e:
+        logging.error(f"Error loading default config for stock_predictor: {e}", exc_info=True)
         return {"error": f"Could not load default config: {e}"}
 
 class StockPredictionPipeline:
     def __init__(self, config: dict, celery_task: Any = None):
-        # DÜZELTME: Eğer config worker'dan gelmiyorsa (örn. yerel test), varsayılanı yükle
-        default_config = get_default_config()
-        # Gelen config'i varsayılanın üzerine yaz (merge et)
-        self.config = {**default_config, **config}
-        
+        self.celery_task = celery_task
         self.logger = logging.getLogger(self.__class__.__name__)
         logging.basicConfig(level="INFO", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.celery_task = celery_task
+
+        # Gelen konfigürasyonu varsayılanın üzerine yazarak tam bir config oluştur
+        default_config = get_default_config()
+        if "error" in default_config:
+            self.logger.error("Could not load default config. Using only provided config.")
+            self.config = config
+        else:
+            # Derin birleştirme (nested dict'ler için)
+            def deep_merge(source, destination):
+                for key, value in source.items():
+                    if isinstance(value, dict):
+                        node = destination.setdefault(key, {})
+                        deep_merge(value, node)
+                    else:
+                        destination[key] = value
+                return destination
+            
+            # Önce varsayılanı al, sonra gelen config ile üzerine yaz
+            merged_config = default_config.copy()
+            self.config = deep_merge(config, merged_config)
 
     def run(self):
         data_sourcing_config = self.config.get("data_sourcing", {})
@@ -39,8 +55,8 @@ class StockPredictionPipeline:
         
         ticker = data_sourcing_config.get("ticker", "MSFT")
         start_date = data_sourcing_config.get("start_date", "2021-01-01")
-        epochs = training_params_config.get("epochs", 10)
-        lr = training_params_config.get("lr", 0.01)
+        epochs = int(training_params_config.get("epochs", 10)) # UI'dan string gelebilir, int'e çevir
+        lr = float(training_params_config.get("lr", 0.01)) # UI'dan string gelebilir, float'a çevir
 
         self.logger.info(f"--- Running Stock Prediction Pipeline for {ticker} ({epochs} epochs, lr={lr}) ---")
         
