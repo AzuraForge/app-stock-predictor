@@ -12,6 +12,7 @@ dependencies = [
     "yfinance",
     "pandas",
     "scikit-learn",
+    "PyYAML", # <-- YENİ BAĞIMLILIK
 ]
 
 [project.entry-points]

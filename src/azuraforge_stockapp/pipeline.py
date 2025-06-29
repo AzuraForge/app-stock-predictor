@@ -3,12 +3,11 @@ import yfinance as yf
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import os 
-from typing import Any # <<<< KRİTİK DÜZELTME
-import yaml # Yeni: Konfigürasyon dosyasını okumak için
+from typing import Any
+import yaml # YENİ: Konfigürasyon dosyasını okumak için
 
 from azuraforge_learner import Learner, Sequential, Linear, MSELoss, SGD, ReLU
 
-# Yeni fonksiyon: Varsayılan konfigürasyonu döndürür
 def get_default_config():
     """
     Bu pipeline'ın varsayılan konfigürasyonunu bir Python sözlüğü olarak döndürür.
@@ -23,25 +22,27 @@ def get_default_config():
         logging.error(f"Error loading default config for stock_predictor: {e}")
         return {"error": f"Could not load default config: {e}"}
 
-
 class StockPredictionPipeline:
     def __init__(self, config: dict, celery_task: Any = None):
-        self.config = config
+        # DÜZELTME: Eğer config worker'dan gelmiyorsa (örn. yerel test), varsayılanı yükle
+        default_config = get_default_config()
+        # Gelen config'i varsayılanın üzerine yaz (merge et)
+        self.config = {**default_config, **config}
+        
         self.logger = logging.getLogger(self.__class__.__name__)
         logging.basicConfig(level="INFO", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.celery_task = celery_task # Celery Task objesi buraya iletilir
+        self.celery_task = celery_task
 
     def run(self):
         data_sourcing_config = self.config.get("data_sourcing", {})
         training_params_config = self.config.get("training_params", {})
         
-        # ... (Geri kalan kod aynı kalacak) ...
         ticker = data_sourcing_config.get("ticker", "MSFT")
         start_date = data_sourcing_config.get("start_date", "2021-01-01")
         epochs = training_params_config.get("epochs", 10)
         lr = training_params_config.get("lr", 0.01)
 
-        self.logger.info(f"--- Running Stock Prediction Pipeline for {ticker} ({epochs} epochs) ---")
+        self.logger.info(f"--- Running Stock Prediction Pipeline for {ticker} ({epochs} epochs, lr={lr}) ---")
         
         try:
             data = yf.download(ticker, start=start_date, progress=False, actions=False, auto_adjust=True)
@@ -66,7 +67,6 @@ class StockPredictionPipeline:
         criterion = MSELoss()
         optimizer = SGD(model.parameters(), lr=lr)
         
-        # --- KRİTİK DÜZELTME: Learner'a Celery Task objesini iletiyoruz ---
         learner = Learner(model, criterion, optimizer, current_task=self.celery_task)
 
         self.logger.info(f"Starting training for {epochs} epochs...")
