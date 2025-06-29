@@ -1,4 +1,3 @@
-# ========== DOSYA: app-stock-predictor/setup.py ==========
 from setuptools import setup, find_packages
 setup(
     package_dir={"": "src"},

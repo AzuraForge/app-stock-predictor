@@ -1,4 +1,3 @@
-# ========== GÜNCELLENECEK DOSYA: app-stock-predictor/src/azuraforge_stockapp/pipeline.py ==========
 import logging
 import yfinance as yf
 import numpy as np

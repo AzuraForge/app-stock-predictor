@@ -1,4 +1,3 @@
-# ========== DOSYA: src/azuraforge_stockapp/config/stock_predictor_config.yml ==========
 pipeline_name: "stock_predictor"
 
 data_sourcing:
