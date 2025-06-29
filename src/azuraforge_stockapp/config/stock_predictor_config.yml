@@ -4,6 +4,12 @@ data_sourcing:
   ticker: "MSFT" # Microsoft
   start_date: "2021-01-01"
 
+# YENİ: Modelin yapısını belirleyen parametreler
+model_params:
+  sequence_length: 60 # LSTM'in ne kadar geriye bakacağı
+  hidden_size: 50     # LSTM katmanındaki nöron sayısı
+
 training_params:
-  epochs: 10 # Test için kısa tutalım
-  lr: 0.01
+  epochs: 10 
+  lr: 0.001 # Adam için daha düşük bir öğrenme oranı genellikle daha iyidir
+  optimizer: "adam" # 'adam' veya 'sgd' olabilir

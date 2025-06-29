@@ -5,17 +5,16 @@ from sklearn.preprocessing import MinMaxScaler
 import os 
 from typing import Any
 import yaml
-from importlib import resources # YENİ: Paket içi kaynak okumak için en güvenilir yol
+from importlib import resources
 
-from azuraforge_learner import Learner, Sequential, Linear, MSELoss, SGD, ReLU
+# YENİ: LSTM ve Adam gibi yeni bileşenleri import ediyoruz
+from azuraforge_learner import Learner, Sequential, Linear, LSTM, MSELoss, SGD, Adam, ReLU
 
 def get_default_config():
     """
     Bu pipeline'ın varsayılan konfigürasyonunu bir Python sözlüğü olarak döndürür.
-    DÜZELTME: importlib.resources kullanarak dosya okuma hatasını giderir.
     """
     try:
-        # "azuraforge_stockapp.config" modülü içindeki dosyayı güvenli bir şekilde açar
         with resources.open_text("azuraforge_stockapp.config", "stock_predictor_config.yml") as f:
             config = yaml.safe_load(f)
         return config
@@ -23,19 +22,27 @@ def get_default_config():
         logging.error(f"Error loading default config for stock_predictor: {e}", exc_info=True)
         return {"error": f"Could not load default config: {e}"}
 
+def create_sequences(data, sequence_length):
+    """Veriyi LSTM için uygun (samples, sequence_length, features) formatına dönüştürür."""
+    xs, ys = [], []
+    for i in range(len(data) - sequence_length):
+        x = data[i:(i + sequence_length)]
+        y = data[i + sequence_length]
+        xs.append(x)
+        ys.append(y)
+    return np.array(xs), np.array(ys)
+
 class StockPredictionPipeline:
     def __init__(self, config: dict, celery_task: Any = None):
         self.celery_task = celery_task
         self.logger = logging.getLogger(self.__class__.__name__)
         logging.basicConfig(level="INFO", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-        # Gelen konfigürasyonu varsayılanın üzerine yazarak tam bir config oluştur
         default_config = get_default_config()
         if "error" in default_config:
             self.logger.error("Could not load default config. Using only provided config.")
             self.config = config
         else:
-            # Derin birleştirme (nested dict'ler için)
             def deep_merge(source, destination):
                 for key, value in source.items():
                     if isinstance(value, dict):
@@ -45,20 +52,24 @@ class StockPredictionPipeline:
                         destination[key] = value
                 return destination
             
-            # Önce varsayılanı al, sonra gelen config ile üzerine yaz
             merged_config = default_config.copy()
             self.config = deep_merge(config, merged_config)
 
     def run(self):
         data_sourcing_config = self.config.get("data_sourcing", {})
         training_params_config = self.config.get("training_params", {})
+        model_params_config = self.config.get("model_params", {}) # YENİ
         
         ticker = data_sourcing_config.get("ticker", "MSFT")
         start_date = data_sourcing_config.get("start_date", "2021-01-01")
-        epochs = int(training_params_config.get("epochs", 10)) # UI'dan string gelebilir, int'e çevir
-        lr = float(training_params_config.get("lr", 0.01)) # UI'dan string gelebilir, float'a çevir
+        
+        epochs = int(training_params_config.get("epochs", 10))
+        lr = float(training_params_config.get("lr", 0.01))
+        optimizer_type = training_params_config.get("optimizer", "adam").lower() # YENİ
+        sequence_length = int(model_params_config.get("sequence_length", 60)) # YENİ
+        hidden_size = int(model_params_config.get("hidden_size", 50)) # YENİ
 
-        self.logger.info(f"--- Running Stock Prediction Pipeline for {ticker} ({epochs} epochs, lr={lr}) ---")
+        self.logger.info(f"--- Running LSTM Stock Prediction for {ticker} (epochs={epochs}, lr={lr}, opt={optimizer_type}) ---")
         
         try:
             data = yf.download(ticker, start=start_date, progress=False, actions=False, auto_adjust=True)
@@ -73,22 +84,36 @@ class StockPredictionPipeline:
         scaler = MinMaxScaler(feature_range=(-1, 1))
         scaled_prices = scaler.fit_transform(close_prices)
         
-        if len(scaled_prices) < 2:
-            self.logger.warning("Not enough data to create sequences for training.")
-            return {"status": "completed", "ticker": ticker, "final_loss": float('inf'), "message": "Not enough data for training"}
+        if len(scaled_prices) <= sequence_length:
+            self.logger.warning(f"Not enough data to create sequences. Need > {sequence_length}, have {len(scaled_prices)}")
+            return {"status": "completed", "message": "Not enough data for training"}
 
-        X, y = scaled_prices[:-1], scaled_prices[1:]
+        # YENİ: Veriyi LSTM için sekanslara ayır
+        X, y = create_sequences(scaled_prices, sequence_length)
         
-        model = Sequential(Linear(1, 64), ReLU(), Linear(64, 1))
+        # Girdi boyutunu (num_features) veriden al
+        input_size = X.shape[2] 
+        
+        # YENİ: Modeli LSTM olarak tanımla
+        model = Sequential(
+            LSTM(input_size=input_size, hidden_size=hidden_size),
+            Linear(hidden_size, 1)
+        )
+        
         criterion = MSELoss()
-        optimizer = SGD(model.parameters(), lr=lr)
+        
+        # YENİ: Optimizer'ı konfigürasyona göre seç
+        if optimizer_type == "adam":
+            optimizer = Adam(model.parameters(), lr=lr)
+        else:
+            optimizer = SGD(model.parameters(), lr=lr)
         
         learner = Learner(model, criterion, optimizer, current_task=self.celery_task)
 
-        self.logger.info(f"Starting training for {epochs} epochs...")
+        self.logger.info(f"Starting LSTM training for {epochs} epochs...")
         history = learner.fit(X, y, epochs=epochs)
         
-        final_loss = history['loss'][-1]
+        final_loss = history['loss'][-1] if history['loss'] else float('inf')
         self.logger.info(f"Training complete. Final loss: {final_loss:.6f}")
         
         return {"status": "completed", "ticker": ticker, "final_loss": final_loss, "loss": history['loss']}
