@@ -13,7 +13,7 @@ class StockPredictionPipeline:
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         logging.basicConfig(level="INFO", format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.celery_task = celery_task
+        self.celery_task = celery_task # Celery Task objesi buraya iletilir
 
     def run(self):
         data_sourcing_config = self.config.get("data_sourcing", {})
@@ -49,6 +49,7 @@ class StockPredictionPipeline:
         criterion = MSELoss()
         optimizer = SGD(model.parameters(), lr=lr)
         
+        # --- KRİTİK DÜZELTME: Learner'a Celery Task objesini iletiyoruz ---
         learner = Learner(model, criterion, optimizer, current_task=self.celery_task)
 
         self.logger.info(f"Starting training for {epochs} epochs...")
@@ -57,4 +58,4 @@ class StockPredictionPipeline:
         final_loss = history['loss'][-1]
         self.logger.info(f"Training complete. Final loss: {final_loss:.6f}")
         
-        return {"status": "completed", "ticker": ticker, "final_loss": final_loss}
+        return {"status": "completed", "ticker": ticker, "final_loss": final_loss, "loss": history['loss']}
