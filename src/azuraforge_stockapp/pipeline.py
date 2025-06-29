@@ -42,7 +42,7 @@ class StockPredictionPipeline:
                 for key, value in source.items():
                     if isinstance(value, dict) and key in destination and isinstance(destination.get(key), dict):
                         destination[key] = deep_merge(value, destination[key])
-                    elif value is not None:
+                    elif value is not None: 
                         destination[key] = value
                 return destination
             
@@ -55,7 +55,7 @@ class StockPredictionPipeline:
         model_params_config = self.config.get("model_params", {})
         
         ticker = data_sourcing_config.get("ticker", "MSFT")
-        start_date = data_sourcing_config.get("start_date", "2010-01-01")
+        # DİKKAT: start_date artık kullanılmıyor, yerine period="max" kullanacağız.
         
         epochs = int(training_params_config.get("epochs", 50)) 
         lr = float(training_params_config.get("lr", 0.001)) 
@@ -63,13 +63,14 @@ class StockPredictionPipeline:
         sequence_length = int(model_params_config.get("sequence_length", 60))
         hidden_size = int(model_params_config.get("hidden_size", 50))
 
-        self.logger.info(f"--- Running LSTM Stock Prediction for {ticker} (start_date={start_date}, epochs={epochs}, lr={lr}, opt={optimizer_type}) ---")
+        self.logger.info(f"--- Running LSTM Stock Prediction for {ticker} (period=max, epochs={epochs}) ---")
         
         try:
-            # DÜZELTME: Veri çekme çağrısı daha sağlam hale getirildi.
-            data = yf.download(ticker, start=start_date, progress=False, actions=False, auto_adjust=True)
+            # DÜZELTME: Veri çekme stratejisi değiştirildi.
+            # start_date yerine period="max" kullanarak en fazla veriyi çekmeyi garantiliyoruz.
+            data = yf.download(ticker, period="max", progress=False, actions=False, auto_adjust=True)
             if data.empty:
-                raise ValueError(f"No data downloaded for ticker: {ticker} from {start_date}")
+                raise ValueError(f"No data downloaded for ticker: {ticker} using period='max'")
             self.logger.info(f"Downloaded {len(data)} rows of data.")
             close_prices = data[['Close']].values.astype(np.float32)
         except Exception as e:
@@ -81,7 +82,6 @@ class StockPredictionPipeline:
         
         if len(scaled_prices) <= sequence_length:
             self.logger.warning(f"Not enough data to create sequences. Need > {sequence_length}, have {len(scaled_prices)}")
-            # DÜZELTME: JSON uyumlu 'None' döndür
             return {"status": "completed", "ticker": ticker, "final_loss": None, "message": "Not enough data for training"}
 
         X, y = create_sequences(scaled_prices, sequence_length)
@@ -102,7 +102,6 @@ class StockPredictionPipeline:
         self.logger.info(f"Starting LSTM training for {epochs} epochs...")
         history = learner.fit(X, y, epochs=epochs)
         
-        # DÜZELTME: JSON uyumlu 'None' döndür
         final_loss = history['loss'][-1] if history.get('loss') else None
         self.logger.info(f"Training complete. Final loss: {final_loss}")
         
