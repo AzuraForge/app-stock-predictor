@@ -11,7 +11,7 @@ feature_engineering:
 
 model_params:
   sequence_length: 60
-  hidden_size: 50
+  hidden_size: 5
 
 training_params:
   epochs: 50
