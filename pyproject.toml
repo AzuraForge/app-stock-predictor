@@ -8,11 +8,11 @@ version = "0.1.0"
 description = "A stock prediction pipeline application for the AzuraForge platform."
 requires-python = ">=3.8"
 dependencies = [
-    "azuraforge-learner @ git+https://github.com/AzuraForge/learner.git@main",
+    "azuraforge-learner @ git+https://github.com/AzuraForge/learner.git@v0.1.3", # <-- DEĞİŞTİ
     "yfinance",
     "pandas",
     "scikit-learn",
-    "PyYAML", # <-- YENİ BAĞIMLILIK
+    "PyYAML",
 ]
 
 [project.entry-points]
