@@ -11,7 +11,6 @@ import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 
 from azuraforge_learner import Learner, Sequential, LSTM, Linear, Adam, SGD, MSELoss, Callback
-# DÜZELTME: Raporlama fonksiyonunu yeni yerinden import et
 from azuraforge_learner.reporting import generate_regression_report
 
 
