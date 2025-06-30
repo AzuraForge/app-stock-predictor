@@ -10,8 +10,10 @@ import pandas as pd
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 
-# Callback artık learner'dan geliyor.
 from azuraforge_learner import Learner, Sequential, LSTM, Linear, Adam, SGD, MSELoss, Callback
+# DÜZELTME: Raporlama fonksiyonunu yeni yerinden import et
+from azuraforge_learner.reporting import generate_regression_report
+
 
 def create_sequences(data: np.ndarray, seq_length: int) -> Tuple[np.ndarray, np.ndarray]:
     xs, ys = [], []
@@ -90,9 +92,6 @@ class StockPredictionPipeline:
         X_train, X_test = X[:split_idx], X[split_idx:]
         y_train, y_test = y[:split_idx], y[split_idx:]
         
-        # DÜZELTME: Zaman damgası hesaplaması daha sağlam hale getirildi.
-        # Test verisi, orijinal verinin sonundan başlar.
-        # `sequence_length` kadar geçmişe bakıldığı için, ilk tahminin zamanı `split_idx + sequence_length` olur.
         time_index_test = close_prices_df.index[split_idx + sequence_length:]
 
         input_size = X_train.shape[2]
@@ -124,7 +123,6 @@ class StockPredictionPipeline:
         }
 
         self.logger.info("Rapor oluşturuluyor...")
-        from azuraforge_learner.utils import generate_regression_report
         generate_regression_report(final_results, self.config)
         
         return {
