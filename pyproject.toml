@@ -8,7 +8,10 @@ version = "0.1.0"
 description = "A stock prediction pipeline application for the AzuraForge platform."
 requires-python = ">=3.8"
 dependencies = [
-    "azuraforge-learner @ git+https://github.com/AzuraForge/learner.git@v0.1.3", # <-- DEĞİŞTİ
+    # === DEĞİŞİKLİK BURADA ===
+    # @main yerine kararlı versiyon etiketi kullanılıyor.
+    "azuraforge-learner @ git+https://github.com/AzuraForge/learner.git@v0.1.3",
+    # === DEĞİŞİKLİK SONU ===
     "yfinance",
     "pandas",
     "scikit-learn",
@@ -16,8 +19,5 @@ dependencies = [
 ]
 
 [project.entry-points]
-# Var olan giriş noktası
 "azuraforge.pipelines" = { stock_predictor = "azuraforge_stockapp.pipeline:StockPredictionPipeline" }
-
-# --- YENİ GİRİŞ NOKTASI GRUBU ---
 "azuraforge.configs" = { stock_predictor = "azuraforge_stockapp.pipeline:get_default_config" }
