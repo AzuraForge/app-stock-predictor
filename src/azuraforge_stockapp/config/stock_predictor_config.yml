@@ -1,3 +1,5 @@
+# app-stock-predictor/src/azuraforge_stockapp/config/stock_predictor_config.yml
+
 pipeline_name: "stock_predictor"
 
 data_sourcing:
@@ -12,10 +14,11 @@ training_params:
   lr: 0.001
   optimizer: "adam"
   test_size: 0.2
-  validate_every: 5
+  validate_every: 5 # Her 5 epoch'ta bir canlı tahmin grafiğini güncelle
 
-# YENİ: Sistem ve önbellek ayarları
+# YENİ: Merkezi sistem ayarları artık burada değil, 
+# .env ve docker-compose.yml'de yönetiliyor.
+# Ancak eklenti seviyesinde caching'i açıp kapatmak için bu flag'i tutabiliriz.
 system:
-  # Önbellek dosyaları, raporlar dizininin içindeki .cache klasörüne kaydedilecek
-  cache_dir: "reports/.cache" 
+  caching_enabled: true
   cache_max_age_hours: 24
