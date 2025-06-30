@@ -5,6 +5,10 @@ pipeline_name: "stock_predictor"
 data_sourcing:
   ticker: "MSFT"
 
+# YENİ: Özellik mühendisliği ve dönüşüm ayarları
+feature_engineering:
+  target_col_transform: "log" # "log" veya "none" olabilir
+
 model_params:
   sequence_length: 60
   hidden_size: 50
@@ -14,11 +18,8 @@ training_params:
   lr: 0.001
   optimizer: "adam"
   test_size: 0.2
-  validate_every: 5 # Her 5 epoch'ta bir canlı tahmin grafiğini güncelle
+  validate_every: 5
 
-# YENİ: Merkezi sistem ayarları artık burada değil, 
-# .env ve docker-compose.yml'de yönetiliyor.
-# Ancak eklenti seviyesinde caching'i açıp kapatmak için bu flag'i tutabiliriz.
 system:
   caching_enabled: true
   cache_max_age_hours: 24
