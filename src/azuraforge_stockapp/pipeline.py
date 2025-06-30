@@ -1,5 +1,3 @@
-# app-stock-predictor/src/azuraforge_stockapp/pipeline.py
-
 import logging
 from typing import Any, Dict, Tuple, List
 
@@ -12,7 +10,6 @@ from azuraforge_learner import Sequential, LSTM, Linear
 from azuraforge_learner.pipelines import TimeSeriesPipeline
 
 def get_default_config() -> Dict[str, Any]:
-    """Uygulamanın varsayılan konfigürasyonunu yükler."""
     try:
         with resources.open_text("azuraforge_stockapp.config", "stock_predictor_config.yml") as f:
             return yaml.safe_load(f)
@@ -21,11 +18,8 @@ def get_default_config() -> Dict[str, Any]:
         return {"error": f"Varsayılan konfigürasyon yüklenemedi: {e}"}
 
 class StockPredictionPipeline(TimeSeriesPipeline):
-    """
-    Hisse senedi fiyat tahmini için TimeSeriesPipeline'den türetilmiş,
-    merkezi caching kullanan standartlaştırılmış pipeline.
-    Sadece kendine özgü metotları implemente eder.
-    """
+    # DÜZELTME: Artık __init__ metoduna gerek yok, çünkü BasePipeline'in __init__'i
+    # bizim için logger'ı zaten ayarlıyor.
     
     def _load_data_from_source(self) -> pd.DataFrame:
         """Sadece yfinance'ten veri çekme işini yapar. Caching bu metodun dışındadır."""
@@ -36,7 +30,7 @@ class StockPredictionPipeline(TimeSeriesPipeline):
         if data.empty:
             raise ValueError(f"'{ticker}' için veri indirilemedi.")
             
-        self.logger.info(f"Downloaded {len(data)} rows of data.")
+        self.logger.info(f"{len(data)} satır veri indirildi.")
         return data
 
     def get_caching_params(self) -> Dict[str, Any]:
@@ -49,7 +43,7 @@ class StockPredictionPipeline(TimeSeriesPipeline):
 
     def _create_model(self, input_shape: Tuple) -> Sequential:
         """LSTM ve bir Linear katmandan oluşan modeli oluşturur."""
-        input_size = input_shape[2] # num_features
+        input_size = input_shape[2] 
         hidden_size = self.config.get("model_params", {}).get("hidden_size", 50)
         
         return Sequential(
