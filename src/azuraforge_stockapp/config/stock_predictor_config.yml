@@ -1,14 +1,21 @@
 pipeline_name: "stock_predictor"
 
 data_sourcing:
-  ticker: "MSFT" # Microsoft
-  start_date: "2010-01-01" # <- DEĞİŞİKLİK: Yeterli veriyi garanti altına almak için tarihi çok daha geriye çektik.
+  ticker: "MSFT"
 
 model_params:
-  sequence_length: 60 # LSTM'in ne kadar geriye bakacağı
-  hidden_size: 50     # LSTM katmanındaki nöron sayısı
+  sequence_length: 60
+  hidden_size: 50
 
 training_params:
-  epochs: 50 # <-- DEĞİŞİKLİK: Varsayılan epoch sayısını daha anlamlı bir eğitime izin verecek şekilde artırdık.
-  lr: 0.001 
+  epochs: 50
+  lr: 0.001
   optimizer: "adam"
+  test_size: 0.2
+  validate_every: 5
+
+# YENİ: Sistem ve önbellek ayarları
+system:
+  # Önbellek dosyaları, raporlar dizininin içindeki .cache klasörüne kaydedilecek
+  cache_dir: "reports/.cache" 
+  cache_max_age_hours: 24
