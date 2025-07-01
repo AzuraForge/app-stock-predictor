@@ -15,8 +15,8 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    environment:
-      name: development 
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     strategy:
       matrix:
@@ -35,9 +35,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install python-semantic-release
-        # Bağımlılıklarını kur (learner'ı güncel versiyondan çekecektir)
-        pip install git+https://github.com/AzuraForge/learner.git@v0.1.5
         pip install -e .
 
     - name: Check code format with Black
@@ -64,5 +61,3 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         semantic-release publish 
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
