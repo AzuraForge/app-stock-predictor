@@ -21,8 +21,7 @@ dependencies = [
 [project.entry-points]
 "azuraforge.pipelines" = { stock_predictor = "azuraforge_stockapp.pipeline:StockPredictionPipeline" }
 "azuraforge.configs" = { stock_predictor = "azuraforge_stockapp.pipeline:get_default_config" }
-# # YENİ ENTRY POINT:
-# "azuraforge.schemas" = { stock_predictor = "azuraforge_stockapp.pipeline:get_form_schema" }
+
 
 [tool.semantic_release]
 branch = "main"
