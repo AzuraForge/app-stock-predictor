@@ -11,6 +11,7 @@ import yfinance as yf
 from azuraforge_learner import Sequential, LSTM, Linear
 from azuraforge_learner.pipelines import TimeSeriesPipeline
 
+
 def get_default_config() -> Dict[str, Any]:
     try:
         with resources.open_text("azuraforge_stockapp.config", "stock_predictor_config.yml") as f:

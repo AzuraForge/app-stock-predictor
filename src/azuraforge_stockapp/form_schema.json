@@ -1,0 +1,62 @@
+{
+    "groups": [
+        {
+            "id": "data_sourcing",
+            "name": "Veri Kaynağı",
+            "fields": [
+                {
+                    "id": "ticker",
+                    "path": "data_sourcing.ticker",
+                    "label": "Ticker Sembolü",
+                    "type": "text",
+                    "placeholder": "Örn: MSFT, AAPL, GOOG",
+                    "help_text": "Tek bir değer veya virgülle ayrılmış birden fazla değer.",
+                    "validation": {"required": true}
+                }
+            ]
+        },
+        {
+            "id": "feature_engineering",
+            "name": "Özellik Mühendisliği",
+            "fields": [
+                {
+                    "id": "target_col_transform",
+                    "path": "feature_engineering.target_col_transform",
+                    "label": "Hedef Sütun Dönüşümü",
+                    "type": "select",
+                    "options": [
+                        {"value": "none", "label": "Yok"},
+                        {"value": "log", "label": "Log (log1p)"}
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "model_params",
+            "name": "Model Parametreleri",
+            "fields": [
+                { "id": "sequence_length", "path": "model_params.sequence_length", "label": "Sekans Uzunluğu", "type": "text" },
+                { "id": "hidden_size", "path": "model_params.hidden_size", "label": "Gizli Katman Boyutu", "type": "text" }
+            ]
+        },
+        {
+            "id": "training_params",
+            "name": "Eğitim Parametreleri",
+            "fields": [
+                { "id": "epochs", "path": "training_params.epochs", "label": "Epoch Sayısı", "type": "text" },
+                { "id": "lr", "path": "training_params.lr", "label": "Öğrenme Oranı (LR)", "type": "text" },
+                { "id": "optimizer", "path": "training_params.optimizer", "label": "Optimizer", "type": "select", "options": [{"value": "adam", "label": "Adam"}, {"value": "sgd", "label": "SGD"}] },
+                { "id": "test_size", "path": "training_params.test_size", "label": "Test Seti Boyutu", "type": "text" },
+                { "id": "validate_every", "path": "training_params.validate_every", "label": "Doğrulama Sıklığı (Epoch)", "type": "text" }
+            ]
+        },
+        {
+            "id": "system",
+            "name": "Sistem Ayarları",
+            "fields": [
+                { "id": "caching_enabled", "path": "system.caching_enabled", "label": "Önbellek Etkin mi?", "type": "select", "options": [{"value": true, "label": "Evet"}, {"value": false, "label": "Hayır"}] },
+                { "id": "cache_max_age_hours", "path": "system.cache_max_age_hours", "label": "Önbellek Yaşam Süresi (saat)", "type": "text" }
+            ]
+        }
+    ]
+}
