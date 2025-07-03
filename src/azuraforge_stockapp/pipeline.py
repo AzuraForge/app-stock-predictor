@@ -11,6 +11,8 @@ import yfinance as yf
 from azuraforge_learner import Sequential, LSTM, Linear
 from azuraforge_learner.pipelines import TimeSeriesPipeline
 
+from .config_schema import StockPredictorConfig
+from pydantic import BaseModel
 
 def get_default_config() -> Dict[str, Any]:
     try:
@@ -22,6 +24,10 @@ def get_default_config() -> Dict[str, Any]:
         return {"error": f"Varsayılan konfigürasyon yüklenemedi: {e}"}
 
 class StockPredictionPipeline(TimeSeriesPipeline):
+    def get_config_model(self) -> type[BaseModel]:
+        """Bu pipeline için Pydantic konfigürasyon modelini döndürür."""
+        return StockPredictorConfig
+    
     # DÜZELTME: __init__ metodunu, temel sınıfı çağırmak ve loglamayı doğrulamak için geri ekliyoruz.
     def __init__(self, config: Dict[str, Any]):
         # Bu, BasePipeline'in __init__'ini çağıracak ve self.logger'ı ayarlayacaktır.
