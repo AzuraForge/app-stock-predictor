@@ -8,8 +8,8 @@ from importlib import resources
 import pandas as pd
 import yfinance as yf
 
-from azuraforge_learner import Sequential, LSTM, Linear
 from azuraforge_learner.pipelines import TimeSeriesPipeline
+from azuraforge_learner import Sequential, LSTM, Linear
 
 from .config_schema import StockPredictorConfig
 from pydantic import BaseModel
