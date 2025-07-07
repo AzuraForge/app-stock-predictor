@@ -49,6 +49,7 @@ class StockPredictionPipeline(TimeSeriesPipeline):
             self.logger.error(f"yfinance returned empty data for ticker '{ticker}'.")
             raise ValueError(f"No data could be downloaded for ticker '{ticker}'.")
             
+        # === HATAYI ÖNLEYEN KRİTİK DÜZELTME ===
         # Sadece sayısal sütunları seç. Bu, 'Dividends', 'Stock Splits' gibi 
         # tahmin için gereksiz ve potansiyel tip sorunlarına yol açabilecek sütunları dışlar.
         numeric_cols = data.select_dtypes(include=np.number).columns.tolist()
@@ -66,6 +67,7 @@ class StockPredictionPipeline(TimeSeriesPipeline):
         # Eğer hala NaN varsa (örn: tamamen boş bir sütun), 0 ile doldur.
         # Bu, verinin tamamen sayısal ve eksiksiz olmasını sağlar.
         data.fillna(0, inplace=True) 
+        # === DÜZELTME SONU ===
 
         self.logger.info(f"Downloaded and processed {len(data)} rows of data.")
         return data
