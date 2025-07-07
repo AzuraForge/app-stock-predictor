@@ -8,6 +8,7 @@ from importlib import resources
 import pandas as pd
 import yfinance as yf
 from pydantic import BaseModel
+import numpy as np # numpy'ı import etmeyi unutmayın
 
 from azuraforge_learner.pipelines import TimeSeriesPipeline
 from azuraforge_learner import Sequential, LSTM, Linear
@@ -37,7 +38,9 @@ class StockPredictionPipeline(TimeSeriesPipeline):
         return StockPredictorConfig
     
     def _load_data_from_source(self) -> pd.DataFrame:
-        """Sadece yfinance'ten veri çekme işini yapar."""
+        """
+        yfinance'ten veri çekme işini yapar ve potansiyel NaN veya tip sorunlarını giderir.
+        """
         ticker = self.config.get("data_sourcing", {}).get("ticker", "MSFT")
         self.logger.info(f"'_load_data_from_source' called. Ticker: {ticker}")
         
@@ -46,15 +49,23 @@ class StockPredictionPipeline(TimeSeriesPipeline):
             self.logger.error(f"yfinance returned empty data for ticker '{ticker}'.")
             raise ValueError(f"No data could be downloaded for ticker '{ticker}'.")
             
-        # KRİTİK DÜZELTME: NaN değerleri doldur
-        # Özellikle hacim (Volume) veya hisse senedi bölünmeleri (Stock Splits) gibi sütunlarda NaN oluşabilir.
-        # İleriye doğru doldur (önceki geçerli değerle)
+        # Sadece sayısal sütunları seç. Bu, 'Dividends', 'Stock Splits' gibi 
+        # tahmin için gereksiz ve potansiyel tip sorunlarına yol açabilecek sütunları dışlar.
+        numeric_cols = data.select_dtypes(include=np.number).columns.tolist()
+        data = data[numeric_cols].copy() # Kopyasını alarak SettingWithCopyWarning'i önle
+
+        # Tüm sütunları float32'ye dönüştürmeye zorla. 
+        # Dönüştürülemeyen değerleri NaN yapar (errors='coerce').
+        for col in data.columns:
+            data[col] = pd.to_numeric(data[col], errors='coerce').astype(np.float32)
+        
+        # NaN değerleri ileriye doğru doldur (önceki geçerli değerle)
         data.fillna(method='ffill', inplace=True)
-        # Geriye doğru doldur (eğer ilk satırlarda hala NaN varsa, sonraki geçerli değerle)
+        # Eğer ilk satırlarda hala NaN varsa, geriye doğru doldur (sonraki geçerli değerle)
         data.fillna(method='bfill', inplace=True)
         # Eğer hala NaN varsa (örn: tamamen boş bir sütun), 0 ile doldur.
-        # Bu, özellikle "Dividends" veya "Stock Splits" gibi nadiren değer içeren sütunlarda önemli olabilir.
-        data.fillna(0, inplace=True) # Herhangi bir kalan NaN'ı sıfırla doldur
+        # Bu, verinin tamamen sayısal ve eksiksiz olmasını sağlar.
+        data.fillna(0, inplace=True) 
 
         self.logger.info(f"Downloaded and processed {len(data)} rows of data.")
         return data
@@ -68,10 +79,7 @@ class StockPredictionPipeline(TimeSeriesPipeline):
     def _get_target_and_feature_cols(self) -> Tuple[str, List[str]]:
         """Bu basit model için hedef ve özellik aynı sütundur: 'Close'."""
         self.logger.info("'_get_target_and_feature_cols' called. Target: Close")
-        # Eğer ek özellikler (örn: Volume) konfigüre edilmişse onları da ekleyin.
-        # Şu anki form_schema'da sadece ticker var, ancak gelecekte genişletilebilir.
-        # Default olarak sadece 'Close' kullanılıyor.
-        return "Close", ["Close"]
+        return "Close", ["Close"] # Sadece 'Close' sütununu kullanmak istediğimizi belirtiyoruz.
 
     def _create_model(self, input_shape: Tuple) -> Sequential:
         """LSTM ve bir Linear katmandan oluşan modeli oluşturur."""
