@@ -29,8 +29,6 @@ class StockPredictionPipeline(TimeSeriesPipeline):
     ile fiyat tahmini yapar.
     """
     def __init__(self, config: Dict[str, Any]):
-        # BasePipeline.__init__ çağrısı burada otomatik olarak yapılır
-        # ve self.logger ile self.config'i ayarlar.
         super().__init__(config)
         self.logger.info("StockPredictionPipeline (Plugin) initialized successfully.")
     
@@ -48,7 +46,17 @@ class StockPredictionPipeline(TimeSeriesPipeline):
             self.logger.error(f"yfinance returned empty data for ticker '{ticker}'.")
             raise ValueError(f"No data could be downloaded for ticker '{ticker}'.")
             
-        self.logger.info(f"Downloaded {len(data)} rows of data.")
+        # KRİTİK DÜZELTME: NaN değerleri doldur
+        # Özellikle hacim (Volume) veya hisse senedi bölünmeleri (Stock Splits) gibi sütunlarda NaN oluşabilir.
+        # İleriye doğru doldur (önceki geçerli değerle)
+        data.fillna(method='ffill', inplace=True)
+        # Geriye doğru doldur (eğer ilk satırlarda hala NaN varsa, sonraki geçerli değerle)
+        data.fillna(method='bfill', inplace=True)
+        # Eğer hala NaN varsa (örn: tamamen boş bir sütun), 0 ile doldur.
+        # Bu, özellikle "Dividends" veya "Stock Splits" gibi nadiren değer içeren sütunlarda önemli olabilir.
+        data.fillna(0, inplace=True) # Herhangi bir kalan NaN'ı sıfırla doldur
+
+        self.logger.info(f"Downloaded and processed {len(data)} rows of data.")
         return data
 
     def get_caching_params(self) -> Dict[str, Any]:
@@ -60,6 +68,9 @@ class StockPredictionPipeline(TimeSeriesPipeline):
     def _get_target_and_feature_cols(self) -> Tuple[str, List[str]]:
         """Bu basit model için hedef ve özellik aynı sütundur: 'Close'."""
         self.logger.info("'_get_target_and_feature_cols' called. Target: Close")
+        # Eğer ek özellikler (örn: Volume) konfigüre edilmişse onları da ekleyin.
+        # Şu anki form_schema'da sadece ticker var, ancak gelecekte genişletilebilir.
+        # Default olarak sadece 'Close' kullanılıyor.
         return "Close", ["Close"]
 
     def _create_model(self, input_shape: Tuple) -> Sequential:
