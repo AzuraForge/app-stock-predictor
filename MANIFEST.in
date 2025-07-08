@@ -1,3 +1,4 @@
 # Bu dosya, Python dışı dosyaların pakete dahil edilmesini garanti eder.
 # src/azuraforge_stockapp klasörü içindeki tüm .json ve .yml dosyalarını dahil et.
 recursive-include src/azuraforge_stockapp *.json *.yml
+graft src/azuraforge_stockapp/config
