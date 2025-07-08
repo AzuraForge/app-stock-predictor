@@ -1,5 +1,4 @@
-# app-stock-predictor/src/azuraforge_stockapp/pipeline.py
-
+# ========== DOSYA: app-stock-predictor/src/azuraforge_stockapp/pipeline.py ==========
 import logging
 from typing import Any, Dict, Tuple, List, Optional
 
@@ -8,7 +7,7 @@ from importlib import resources
 import pandas as pd
 import yfinance as yf
 from pydantic import BaseModel
-import numpy as np # numpy'ı import etmeyi unutmayın
+import numpy as np
 
 from azuraforge_learner.pipelines import TimeSeriesPipeline
 from azuraforge_learner import Sequential, LSTM, Linear
@@ -16,7 +15,6 @@ from azuraforge_learner import Sequential, LSTM, Linear
 from .config_schema import StockPredictorConfig
 
 def get_default_config() -> Dict[str, Any]:
-    """Eklentinin varsayılan YAML konfigürasyonunu yükler."""
     try:
         with resources.open_text("azuraforge_stockapp.config", "stock_predictor_config.yml") as f:
             return yaml.safe_load(f)
@@ -25,68 +23,52 @@ def get_default_config() -> Dict[str, Any]:
         return {"error": f"Default config could not be loaded: {e}"}
 
 class StockPredictionPipeline(TimeSeriesPipeline):
-    """
-    yfinance kütüphanesini kullanarak hisse senedi verilerini çeker ve LSTM modeli
-    ile fiyat tahmini yapar.
-    """
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.logger.info("StockPredictionPipeline (Plugin) initialized successfully.")
     
     def get_config_model(self) -> Optional[type[BaseModel]]:
-        """Bu pipeline için Pydantic konfigürasyon modelini döndürür."""
         return StockPredictorConfig
     
     def _load_data_from_source(self) -> pd.DataFrame:
-        """
-        yfinance'ten veri çekme işini yapar ve potansiyel NaN veya tip sorunlarını giderir.
-        """
         ticker = self.config.get("data_sourcing", {}).get("ticker", "MSFT")
         self.logger.info(f"'_load_data_from_source' called. Ticker: {ticker}")
         
-        data = yf.download(ticker, period="max", progress=False, actions=False, auto_adjust=True)
+        data = yf.download(ticker, period="max", progress=False, auto_adjust=True)
         if data.empty:
-            self.logger.error(f"yfinance returned empty data for ticker '{ticker}'.")
             raise ValueError(f"No data could be downloaded for ticker '{ticker}'.")
             
-        # === HATAYI ÖNLEYEN KRİTİK DÜZELTME ===
-        # Sadece sayısal sütunları seç. Bu, 'Dividends', 'Stock Splits' gibi 
-        # tahmin için gereksiz ve potansiyel tip sorunlarına yol açabilecek sütunları dışlar.
+        # === YENİ: SAĞLAMLAŞTIRMA ADIMLARI ===
+        # 1. Sadece sayısal sütunları seçerek 'Dividends' gibi sütunları dışla.
         numeric_cols = data.select_dtypes(include=np.number).columns.tolist()
-        data = data[numeric_cols].copy() # Kopyasını alarak SettingWithCopyWarning'i önle
+        data = data[numeric_cols].copy()
 
-        # Tüm sütunları float32'ye dönüştürmeye zorla. 
-        # Dönüştürülemeyen değerleri NaN yapar (errors='coerce').
+        # 2. Tüm sütunları float32'ye dönüştürmeye zorla.
         for col in data.columns:
             data[col] = pd.to_numeric(data[col], errors='coerce').astype(np.float32)
         
-        # NaN değerleri ileriye doğru doldur (önceki geçerli değerle)
-        data.fillna(method='ffill', inplace=True)
-        # Eğer ilk satırlarda hala NaN varsa, geriye doğru doldur (sonraki geçerli değerle)
-        data.fillna(method='bfill', inplace=True)
-        # Eğer hala NaN varsa (örn: tamamen boş bir sütun), 0 ile doldur.
-        # Bu, verinin tamamen sayısal ve eksiksiz olmasını sağlar.
-        data.fillna(0, inplace=True) 
-        # === DÜZELTME SONU ===
+        # 3. Olası tüm NaN değerlerini doldur.
+        data.ffill(inplace=True) # Önce ileriye doğru doldur
+        data.bfill(inplace=True) # Sonra geriye doğru doldur (başlangıçtaki NaN'lar için)
+        data.fillna(0, inplace=True) # Hala varsa 0 ile doldur
+        # === SAĞLAMLAŞTIRMA SONU ===
 
         self.logger.info(f"Downloaded and processed {len(data)} rows of data.")
         return data
 
     def get_caching_params(self) -> Dict[str, Any]:
-        """Önbellek anahtarı için sadece ticker'ın yeterli olduğunu belirtir."""
         ticker = self.config.get("data_sourcing", {}).get("ticker", "MSFT")
-        self.logger.info(f"'get_caching_params' called. Ticker: {ticker}")
         return {"ticker": ticker}
 
     def _get_target_and_feature_cols(self) -> Tuple[str, List[str]]:
-        """Bu basit model için hedef ve özellik aynı sütundur: 'Close'."""
-        self.logger.info("'_get_target_and_feature_cols' called. Target: Close")
-        return "Close", ["Close"] # Sadece 'Close' sütununu kullanmak istediğimizi belirtiyoruz.
+        # === YENİ: DAHA İYİ ÖZELLİK MÜHENDİSLİĞİ ===
+        # Sadece kapanış fiyatı yerine, temel tüm OHLCV verilerini kullanalım.
+        # Bu, modelin performansını ciddi şekilde artırma potansiyeline sahiptir.
+        self.logger.info("Target: Close, Features: Open, High, Low, Close, Volume")
+        return "Close", ["Open", "High", "Low", "Close", "Volume"]
 
     def _create_model(self, input_shape: Tuple) -> Sequential:
-        """LSTM ve bir Linear katmandan oluşan modeli oluşturur."""
         self.logger.info(f"'_create_model' called. Input shape: {input_shape}")
-        # Girdi şekli (batch, seq_len, features)
         input_size = input_shape[2] 
         hidden_size = self.config.get("model_params", {}).get("hidden_size", 50)
         

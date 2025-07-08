@@ -17,6 +17,7 @@ class TrainingParamsConfig(BaseModel):
     optimizer: Literal['adam', 'sgd'] = 'adam'
     test_size: float = Field(0.2, gt=0, lt=1)
     validate_every: int = Field(5, gt=0)
+    batch_size: int = Field(32, gt=0, description="Number of samples per gradient update.") # <-- YENİ
 
 class SystemConfig(BaseModel):
     caching_enabled: bool = True

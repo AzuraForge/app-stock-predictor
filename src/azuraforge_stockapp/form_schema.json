@@ -45,7 +45,14 @@
             "fields": [
                 { "id": "epochs", "path": "training_params.epochs", "label": "Epoch Sayısı", "type": "text" },
                 { "id": "lr", "path": "training_params.lr", "label": "Öğrenme Oranı (LR)", "type": "text" },
-                 { "id": "optimizer", "path": "training_params.optimizer", "label": "Optimizer", "type": "select", "options": [{"value": "adam", "label": "Adam"}, {"value": "sgd", "label": "SGD"}] },
+                { "id": "optimizer", "path": "training_params.optimizer", "label": "Optimizer", "type": "select", "options": [{"value": "adam", "label": "Adam"}, {"value": "sgd", "label": "SGD"}] },
+                { 
+                    "id": "batch_size", 
+                    "path": "training_params.batch_size", 
+                    "label": "Yığın Boyutu (Batch Size)", 
+                    "type": "text",
+                    "help_text": "Tek seferde işlenecek veri sayısı. VRAM kullanımını doğrudan etkiler."
+                },
                 { "id": "test_size", "path": "training_params.test_size", "label": "Test Seti Boyutu", "type": "text" },
                 { "id": "validate_every", "path": "training_params.validate_every", "label": "Doğrulama Sıklığı (Epoch)", "type": "text" }
             ]
