@@ -1,22 +1,26 @@
+# ========== DOSYA: app-stock-predictor/src/azuraforge_stockapp/config/stock_predictor_config.yml ==========
+
 pipeline_name: "stock_predictor"
 
 data_sourcing:
   ticker: "MSFT"
 
 feature_engineering:
+  # Log dönüşümü, fiyat verisindeki üstel büyümeyi normalize etmek için
+  # genellikle iyi bir pratiktir.
   target_col_transform: "log"
 
 model_params:
-  sequence_length: 60
-  hidden_size: 50 # <-- Daha yetenekli varsayılan
+  sequence_length: 60  # Son 60 işlem gününe (yaklaşık 3 ay) bak
+  hidden_size: 100     # <-- Daha fazla özellik için daha fazla kapasite
 
 training_params:
-  epochs: 50 # <-- Daha uzun varsayılan eğitim
+  epochs: 75           # <-- Finansal verinin gürültüsünü aşmak için daha uzun eğitim
   lr: 0.001
   optimizer: "adam"
   test_size: 0.2
   validate_every: 5
-  batch_size: 32 # <-- YENİ
+  batch_size: 32
 
 system:
   caching_enabled: true
