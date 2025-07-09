@@ -24,9 +24,9 @@ Bu eklenti, tüm AzuraForge platformunu (`Docker`) çalıştırmadan, tamamen ba
 
 ### Gereksinimler
 1.  Ana platformun **[Geliştirme Rehberi](https://github.com/AzuraForge/platform/blob/main/docs/DEVELOPMENT_GUIDE.md)**'ne göre Python sanal ortamınızın kurulu ve aktif olduğundan emin olun.
-2.  Bu reponun kök dizininde olduğunuzdan emin olun.
+2.  Bu reponun kök dizininde olduğunuzundan emin olun.
 
-### Testi Çalıştırma
+### Testi Çalıştırma (CPU üzerinde)
 Aşağıdaki komut, pipeline'ı `MSFT` için varsayılan ayarlarla çalıştıracaktır:
 ```bash
 python tools/run_isolated.py
@@ -36,4 +36,17 @@ python tools/run_isolated.py
 Farklı bir hisse senedi ve daha az epoch ile denemek için:
 ```bash
 python tools/run_isolated.py --ticker AAPL --epochs 20
+```
+
+### Testi Çalıştırma (GPU üzerinde)
+Eğer sisteminizde uyumlu bir NVIDIA GPU ve CUDA kurulu ise, eğitimi GPU üzerinde çalıştırmak için `AZURAFORGE_DEVICE` ortam değişkenini ayarlayabilirsiniz. Bu, eğitim sürecini önemli ölçüde hızlandıracaktır.
+
+**Windows (PowerShell):**
+```powershell
+$env:AZURAFORGE_DEVICE="gpu"; python tools/run_isolated.py
+```
+
+**Linux / macOS / WSL:**
+```bash
+AZURAFORGE_DEVICE=gpu python tools/run_isolated.py
 ```
